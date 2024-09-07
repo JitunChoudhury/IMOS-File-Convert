@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMOS To Cutrite</title>
+    <script src="Formula/BOQ.js" defer></script>
+    <script src="Formula/Cutrite.js" defer></script>
+    <script src="Formula/PDF.js" defer></script>
+    <script src="Toast/toast.js" defer></script>
+    <link rel="stylesheet" href="Toast/toast.css">
+    <link rel="shortcut icon" href="Src/Logo.png" type="image/x-icon">
+    <link rel="stylesheet" href="Css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.13/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+    <div class="header-image">
+        <img src="Src/artech.png" alt="Company Logo">
+    </div>
+    <div class="container">
+        <h1>Generate Cutrite & BOQ</h1>
+        <input type="file" id="fileInput" accept=".csv" onchange="updateFileNames()"><br><br>
+        <input type="text" id="cutriteFileName" placeholder="Please upload a file" name="text" class="input"><br><br>
+        <input type="text" id="boqFileName" placeholder="Please upload a file" name="text" class="input"><br><br>
+        <input type="text" id="userName" placeholder="Enter user name" name="text" class="input" required><br><br>
+        <button class="button-57" type="button" onclick="processCSV('Cutrite')">
+            <span class="text">Cutrite File</span><span>Download</span>
+        </button>
+        <button class="button-57" type="button" onclick="processCSV('BOQ')">
+            <span class="text">BOQ File</span><span>Download</span>
+        </button>
+        <div id="status"></div>
+        <div class="toast-container" id="toast-container"></div>
+    </div>
+    <div class="top-left-buttons">
+        <button class="calc" type="button" onclick="openCalculationPopup()">
+            <span class="text">Calculate</span>
+        </button>
+        <button class="logout" type="button" onclick="logout()">
+            <span class="text">Logout</span>
+        </button>
+    </div>
+    <script>
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
+        }
+
+        let originalFileName = '';
+        let orderNumber = '';
+        let customerName = '';
+
+        function updateFileNames() {
+            const fileInput = document.getElementById('fileInput');
+
+            if (fileInput.files.length === 0) {
+                return;
+            }
+
+            const file = fileInput.files[0];
+            originalFileName = file.name.replace(/\.csv$/i, '');
+
+            document.getElementById('cutriteFileName').value = `${originalFileName}_Cutrite.csv`;
+            document.getElementById('boqFileName').value = `${originalFileName}_BOQ.pdf`;
+        }
+
+        function processCSV(type) {
+            const fileInput = document.getElementById('fileInput');
+            const userNameInput = document.getElementById('userName').value.trim();
+
+            if (fileInput.files.length === 0) {
+                showToast('Select a CSV file to process.', true);
+                return;
+            }
+            if (userNameInput === '' && type === 'BOQ') {
+                showToast('Enter a username before downloading the BOQ file.', true);
+                return;
+            }
+
+            const file = fileInput.files[0];
+
+            Papa.parse(file, {
+                delimiter: ";",
+                header: false,
+                skipEmptyLines: true,
+                complete: function (results) {
+                    if (results.errors.length) {
+                        showToast('Error parsing file.', true);
+                        console.error(results.errors);
+                        return;
+                    }
+
+                    if (type === 'Cutrite') {
+                        const processedData = processData(results.data);
+                        showToast('Cutrite File Downloaded');
+                        downloadCSV(processedData, type);
+                    } else if (type === 'BOQ') {
+                        extractOrderCustomerData(results.data);
+                        const processedData = processAnotherData(results.data);
+                        showToast('BOQ File Downloaded');
+                        downloadPDF(processedData);
+                    } else {
+                        showToast('Unknown processing type.', true);
+                    }
+                },
+                error: function (error) {
+                    showToast('Error reading file.', true);
+                    console.error(error);
+                }
+            });
+        }
+
+        function extractOrderCustomerData(data) {
+            if (data.length > 2) {
+                orderNumber = data[2][30] || "N/A";
+                customerName = data[2][31] || "N/A";
+            } else {
+                orderNumber = "N/A";
+                customerName = "N/A";
+            }
+        }
+
+        function downloadCSV(data, type) {
+            const csv = Papa.unparse(data);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const cutriteFileNameInput = document.getElementById('cutriteFileName').value.trim();
+            const boqFileNameInput = document.getElementById('boqFileName').value.trim();
+
+            let fileName;
+
+            if (type === 'Cutrite') {
+                fileName = cutriteFileNameInput || `${originalFileName}_Cutrite.csv`;
+            }
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = url;
+            downloadLink.download = fileName;
+            downloadLink.click();
+        }
+
+        function openCalculationPopup() {
+            const width = 500;
+            const height = 600;
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const left = (screenWidth / 2) - (width / 2);
+            const top = (screenHeight / 2) - (height / 2);
+            window.open('calc.html', '_blank', `width=${width},height=${height},left=${left},top=${top}`);
+        }
+
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+<footer class="footer">
+    &copy; 2024 Artech Furniture | Developed by Jitun Choudhury
+</footer>
+
+</html>

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Calculator</title>
+    <link rel="stylesheet" href="Css/calc.css">
+    <link rel="stylesheet" href="Css/style.css">
+    <script src="Toast/toast.js" defer></script>
+    <link rel="stylesheet" href="Toast/toast.css">
+    <link rel="shortcut icon" href="Src/Logo.png" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Price Calculator</h1>
+        <input type="file" id="fileInput" accept=".csv"><br><br>
+        <div id="status"></div>
+        <div class="toast-container" id="toast-container"></div>
+        <div id="dataDisplay"></div>
+        <div id="totalPriceContainer"></div>
+    </div>
+
+    <script>
+        let processedData = [];
+        let itemQuantities = {};
+
+        // Handle CSV file input
+        document.getElementById('fileInput').addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    delimiter: ";",
+                    complete: function (results) {
+                        const data = results.data.slice(1); // Skip header row
+                        itemQuantities = {}; // Reset itemQuantities
+
+                        // Process rows
+                        data.forEach(row => {
+                            const quantity = parseFloat(row[11]) || 0;
+                            if (row[3] === "PRE_LAM_") {
+                                itemQuantities[row[2]] = (itemQuantities[row[2]] || 0) + quantity;
+                            } else {
+                                itemQuantities[row[2]] = (itemQuantities[row[2]] || 0) + quantity;
+                                itemQuantities[row[3]] = (itemQuantities[row[3]] || 0) + quantity;
+                                itemQuantities[row[4]] = (itemQuantities[row[4]] || 0) + quantity;
+                            }
+                        });
+
+                        // Display the data and sums
+                        displayData(Object.keys(itemQuantities));
+                        displaySums(itemQuantities);
+
+                        // Show success toast
+                        showToast("Data processed and displayed successfully!");
+                    }
+                });
+            } else {
+                showToast("Please upload a CSV file first!", true);
+            }
+        });
+
+        // Display data with input fields
+        function displayData(data) {
+            const dataDisplay = document.getElementById('dataDisplay');
+            dataDisplay.innerHTML = ''; // Clear existing data
+            const totalPriceContainer = document.getElementById('totalPriceContainer');
+            totalPriceContainer.innerHTML = ''; // Clear existing total price
+
+            const table = document.createElement('table');
+            table.className = 'data-table';
+
+            data.forEach((item, index) => {
+                const tableRow = document.createElement('tr');
+
+                // Item name
+                const dataCell = document.createElement('td');
+                dataCell.textContent = item;
+                tableRow.appendChild(dataCell);
+
+                // Item quantity
+                const quantityCell = document.createElement('td');
+                quantityCell.textContent = itemQuantities[item];
+                tableRow.appendChild(quantityCell);
+
+                // Price input
+                const priceCell = document.createElement('td');
+                const priceInput = document.createElement('input');
+                priceInput.type = 'number';
+                priceInput.placeholder = 'Enter price';
+                priceInput.className = 'price-input';
+                priceInput.addEventListener('input', updateTotalPrice);
+                priceInput.dataset.index = index;
+                priceCell.appendChild(priceInput);
+                tableRow.appendChild(priceCell);
+
+                table.appendChild(tableRow);
+            });
+
+            dataDisplay.appendChild(table);
+
+            // Total price row
+            const totalRow = document.createElement('div');
+            totalRow.id = 'totalPrice';
+            totalRow.textContent = 'Total Price: $0';
+            totalPriceContainer.appendChild(totalRow);
+        }
+
+        // Update total price based on input values
+        function updateTotalPrice() {
+            const priceInputs = document.querySelectorAll('.price-input');
+            let totalPrice = 0;
+
+            priceInputs.forEach(input => {
+                const price = parseFloat(input.value);
+                if (!isNaN(price)) {
+                    totalPrice += price;
+                }
+            });
+
+            document.getElementById('totalPrice').textContent = 'Total Price: $' + totalPrice.toFixed(2);
+        }
+
+        // Show toast notifications
+        function showToast(message, isError = false) {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>
